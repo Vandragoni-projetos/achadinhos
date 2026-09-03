@@ -1,0 +1,43 @@
+# Logs
+logs
+*.log
+debug-cca25f.log
+
+# Ambiente / segredos locais
+.env
+.env.*
+!.env.example
+
+# Override opcional de credenciais (não versionar)
+config/database.local.php
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# --- Deploy achadinhos: itens que NÃO vão para o repositório ---
+# Dump do banco: importado diretamente no MariaDB (transferência separada)
+/Banco de Dados.sql
+*.sql
+# Chave de licença: fornecida pelo fornecedor, vive no volume persistente storage/
+/storage/licence.key
+# Artefatos de debug locais
+/.cursor/
+/debug-*.log

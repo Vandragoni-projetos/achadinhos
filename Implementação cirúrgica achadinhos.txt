@@ -1,0 +1,62 @@
+Implementação cirúrgica apenas. Não refatore o projeto, não altere tenant/auth/billing/planos/módulos/núcleo SaaS, não inclua código de lojas nem fluxos de loja. Não “modernize” o restante do admin. Replique somente o comportamento descrito.
+
+Contexto
+No sistema de referência existem melhorias em torno de:
+
+Modo WhatsApp: Evolution vs Uazapi, cada um em provedor externo ou API própria (quatro combinações via config evolution_tipo).
+Grupos (admin): listagem identifica qual API/conta está ligada; aba de adicionar lista grupos da API, com filtro de pesquisa, tipos Grupo / Comunidade (avisos) / Comunidade (grupo vinculado), e cadastro por lista ou JID manual (incluindo avisos da comunidade).
+Envio: o destino é sempre o JID salvo (…@g.us). Comunidades não usam endpoint especial no envio; o requisito é aceitar e enviar para esses JIDs como para grupos normais (normalização não pode descartar @g.us).
+O que localizar no projeto destino (equivalentes)
+Página(s) de configuração WhatsApp / Evolution (equivalente a admin/configuracoes.php?tab=evolution).
+Página de grupos WhatsApp com abas lista e adicionar (equivalente a admin/grupos.php).
+Inclusões compartilhadas: funções de integração WhatsApp e, se existir, módulo tipo uazapi_whatsapp.php / cliente HTTP da Evolution.
+Se os nomes forem diferentes, preserve os nomes do destino; copie a lógica e o contrato de dados, não os caminhos literais.
+
+1) Ativação Uazapi terceiros e própria (config)
+Introduza ou alinhe uma config central evolution_tipo (ou nome equivalente) com exatamente quatro valores permitidos:
+terceiros (Evolution externo), propria (Evolution API própria), uazapi (Uazapi externo), uazapi_propria (Uazapi servidor próprio).
+Na gravação: atualize só os campos enviados para o modo atual (URL global Evolution, API key global Evolution; URL Uazapi; Admin Token global Uazapi no modo próprio). Não apague credenciais dos outros modos ao alternar (permite voltar sem reconfigurar tudo).
+UI: quatro cartões/rádios com labels claros nos mesmos significados do referência; ao trocar, persistir (POST ou fetch igual ao que vocês já usam — não reinventar stack).
+Modo Uazapi própria: formulário com URL base Uazapi + Admin Token global obrigatórios; criação de nova instância usa esses valores globais nos POSTs administrativos (init/connect), e persiste em evolution_contas (ou tabela equivalente) com:
+provedor = 'uazapi'
+api_propria = 1
+uazapi_admin_token = token admin efetivo usado na criação
+url_base, instancia, api_key = token da instância retornado pela API
+Modo Uazapi terceiros: credenciais por conta no formulário (URL + admin + instância conforme API); api_propria = 0 ao inserir.
+Garanta que ações do painel (QR, status, delete, restart onde aplicável) ramifiquem para cliente Uazapi quando provedor === 'uazapi', com a regra: restart/desconectar agressivo na API só quando for conta API própria Uazapi; provedor externo pode só remover cadastro local (como no referência).
+2) Identificação da API nos grupos
+Na tabela de evolution_contas (ou equivalente), use colunas provedor e api_propria (e uazapi_admin_token se necessário para chamadas). Migração defensiva: se a coluna não existir, fallback de SELECT/comportamento antigo sem quebrar página.
+Na listagem de grupos: JOIN com conta; exibir nome da conta (nome ou instância se nome vazio) e subtítulo com texto equivalente a:
+(Evolution · API própria), (Evolution · Provedor externo), (Uazapi · API própria), (Uazapi · Provedor externo) derivado de provedor + api_propria.
+Nos <select> de escolha de conta (adicionar/editar), use o mesmo sufixo para cada opção.
+Não altere o modelo de grupos_whatsapp além do que já existe: vínculos por evolution_conta_id e grupo_id (JID).
+3) Filtro “pesquisar grupo” na aba adicionar
+Após buscar grupos na API, mostrar tabela com colunas: rádio, Nome, Tipo, ID, Membros.
+Adicionar input search que filtra no cliente linhas da tabela por: nome (subject), JID (id), valor de destino, e sinônimos (“comunidade avisos”, “comunidade subgrupo”) para achar comunidades digitando “comunidade”, etc.
+Ao buscar nova lista, limpar o filtro. Eventos input e search no campo.
+Manter clique na linha e rádio funcionando; filtro só alterna classe hidden nas <tr>.
+4) Identificação de comunidades (dados + UI)
+Pipeline de listagem da API deve popular cada item com destino ∈ { grupo, comunidade, comunidade_avisos }:
+comunidade_avisos: detectar por flags/metadata Baileys/Uazapi (isCommunityAnnounce e variações), groupType, busca recursiva por chaves tipo community_announce, e por texto em subject/descrição (“avisos da comunidade”, “community announcements”, etc.) — não tratar announce genérico como comunidade sem outros indícios.
+comunidade: subgrupo com parentCommunityId / linkedParent / variações; excluir se já for avisos.
+Para Uazapi: achatar JSON de group/list e group/info (merge de chaves em group, data, metadata, …) antes da detecção; complementar lista com POST /chat/find paginado (wa_isGroup) para JIDs faltantes; mesclar destino com prioridade avisos > subgrupo > grupo quando o mesmo JID aparece em fontes diferentes.
+Para Evolution: reutilizar a mesma função de destino ao normalizar itens do fetchAllGroups/findChats (como no referência).
+Na UI, Tipo:
+Comunidade + “Avisos” (estilo destaque roxo no referência),
+Comunidade + “Grupo vinculado”,
+Grupo normal (texto neutro).
+5) Postar em comunidades
+Ao cadastrar, aceitar JID de avisos da comunidade ou grupo comunitário (…@g.us) manual ou pela lista; persistir em grupo_id.
+No envio (função que manda mensagem/mídia Uazapi): o normalizador de destino deve preservar strings que já contêm @g.us (não converter para número brasileiro). Assim, automações e “enviar teste” usam o mesmo código para grupo comum e comunidade.
+Não crie filial separada de envio “s só comunidade”; apenas garanta JID válido e permissões na conta WhatsApp.
+Contrato AJAX da busca de grupos (alinhar com o referência)
+Endpoint interno tipo grupos.php?action=fetch_grupos_evolution&conta_id= retornando JSON { success, message?, grupos: [...] } com grupos[].id|subject|size|destino.
+Se a conta for Uazapi: carregar token admin via helper equivalente a uazapiResolverAdminToken (global próprio vs token na linha).
+Liberar lock de sessão antes de chamadas longas se o PHP usar sessões bloqueantes.
+Critérios de aceite
+Alternar entre os quatro modos não corrompe credenciais salvas dos outros.
+Lista de grupos mostra tipo de API na coluna Conta e nos selects.
+Aba adicionar: filtro reduz linhas sem perder seleção por clique/radio.
+Itens de comunidade aparecem com tipo correto e nomes default ao abrir o formulário de cadastro.
+Envio para JID de comunidade cadastrado funciona quando a API Uazapi aceita o JID (sem normalização que apague @g.us).
+Nada de alteração em SaaS multi-tenant, billing, nem páginas de loja.

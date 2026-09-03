@@ -1,0 +1,10 @@
+# Template — copiado para uploads/.htaccess pelo entrypoint se o volume vier vazio.
+# Conteúdo idêntico ao uploads/.htaccess versionado no projeto.
+
+<FilesMatch "(?i)\.(php|phtml|phar|pht|phps|php[0-9]|cgi|pl|py|rb|asp|aspx|jsp|sh|htaccess|htpasswd)$">
+    Require all denied
+</FilesMatch>
+
+Options -ExecCGI -Indexes -MultiViews
+RemoveHandler .php .phtml .phar .pht .php3 .php4 .php5 .php7 .php8
+RemoveType .php .phtml .phar .pht

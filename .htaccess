@@ -1,0 +1,10 @@
+DirectoryIndex index.php index.html index.htm
+
+# Produção: evitar forçar exibição de erros a nível Apache (pode sobrepor valores seguros e expor detalhes).
+# O comportamento correcto fica em config/config.php conforme APP_ENV (development = erros visíveis; production = log).
+# Para depuração local com APP_ENV=production, prefira php.ini / user.ini ou mude temporariamente APP_ENV em config/config.php.
+#
+# Descomente apenas em diagnóstico pontual:
+# php_flag display_errors on
+# php_flag display_startup_errors on
+# php_value error_reporting E_ALL

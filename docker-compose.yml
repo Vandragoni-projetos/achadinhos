@@ -1,0 +1,49 @@
+# ACHADINHOS — compose para VALIDAÇÃO LOCAL (não é produção).
+# Credenciais aqui são placeholders locais. Em produção use EasyPanel + variáveis de ambiente.
+#
+#   docker compose up --build        -> http://localhost:8080
+#   docker compose exec db mariadb -u achadinhos -p achadinhos < "Banco de Dados.sql"
+#   docker compose down              (volumes persistem)
+#   docker compose down -v           (apaga volumes)
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: achadinhos
+      DB_USER: achadinhos
+      DB_PASSWORD: local_dev_only_change_me
+    volumes:
+      - achadinhos_storage:/var/www/html/storage
+      - achadinhos_uploads:/var/www/html/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: mariadb:11
+    environment:
+      MARIADB_DATABASE: achadinhos
+      MARIADB_USER: achadinhos
+      MARIADB_PASSWORD: local_dev_only_change_me
+      MARIADB_ROOT_PASSWORD: local_dev_only_root_change_me
+    volumes:
+      - achadinhos_db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+volumes:
+  achadinhos_storage:
+  achadinhos_uploads:
+  achadinhos_db:

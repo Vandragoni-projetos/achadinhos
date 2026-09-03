@@ -1,0 +1,30 @@
+# Mantém estes itens FORA da imagem Docker.
+# (NÃO remove nada do repositório — apenas não são copiados para o container.)
+
+.git
+.gitattributes
+.cursor
+
+# Logs de desenvolvimento / runtime (a app recria os que precisa)
+*.log
+debug-*.log
+
+# Dump SQL: é importado diretamente no MariaDB, nunca deve estar no container
+*.sql
+
+# Segredos locais
+.env
+.env.*
+!.env.example
+
+# Artefactos de build / infra que não pertencem ao runtime
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.*.yml
+DEPLOY-EASYPANEL.md
+
+# Dependências front (não usadas por este projeto, mas por segurança)
+node_modules
+dist
+dist-ssr
