@@ -785,14 +785,21 @@ function mlUrlEMeliLa(string $u): bool {
  *
  * @param mixed $linkExtraido Valor já extraído da resposta (string ou null)
  */
-function mlEscolherMelhorLinkCreateLinkResponse(array $j, $linkExtraido): string {
+function mlEscolherMelhorLinkCreateLinkResponse(array $j, $linkExtraido, string $urlOriginal = ''): string {
     $cands = array_unique(mlColetarUrlsHttpsDoJson($j));
     if ($linkExtraido !== null && $linkExtraido !== '') {
         $cands[] = trim((string) $linkExtraido);
     }
     $cands = array_values(array_unique(array_filter(array_map('trim', $cands))));
-    $meli = array_values(array_filter($cands, static function (string $u): bool {
-        return mlUrlEMeliLa($u);
+    $originalNorm = strtolower(rtrim((string) preg_replace('~[?#].*$~', '', trim($urlOriginal)), '/'));
+    $meli = array_values(array_filter($cands, static function (string $u) use ($originalNorm): bool {
+        if (!mlUrlEMeliLa($u)) {
+            return false;
+        }
+        $candidateNorm = strtolower(rtrim((string) preg_replace('~[?#].*$~', '', trim($u)), '/'));
+        // A API costuma repetir a URL de entrada no JSON. Ela nunca pode ser
+        // tratada como resultado, pois pertence ao afiliado de origem.
+        return $originalNorm === '' || $candidateNorm !== $originalNorm;
     }));
     if ($meli === []) {
         return '';
@@ -843,7 +850,11 @@ function createLinkAfiliadoML($url, $tag, $csrf, $cookie, &$err, &$apiFoiChamada
         return '';
     }
 
-    if (!urlMercadoLivrePermitidaParaCreateLink($fallback)) {
+    // O Link Builder também recebe links curtos oficiais já compartilhados por
+    // outros afiliados. A API resolve o destino e gera um novo meli.la para a
+    // tag autenticada; não devemos expandir o curto antes desta tentativa.
+    $entradaCurtaOficial = function_exists('mlUrlEMeliLa') && mlUrlEMeliLa($fallback);
+    if (!urlMercadoLivrePermitidaParaCreateLink($fallback) && !$entradaCurtaOficial) {
         mlRegistrarLogCreateLinkControlado($fallback, 'invalid_product_path');
         $err = 'createLink: URL do produto não é aceita pelo Link Builder (formato de oferta). Não será enviado link sem meli.la.';
         return '';
@@ -948,7 +959,7 @@ function createLinkAfiliadoML($url, $tag, $csrf, $cookie, &$err, &$apiFoiChamada
         $link = createLinkAfiliadoML_acharLink($j, $urlEnviada, $urlEnviadaNorm);
     }
 
-    $linkFinal = mlEscolherMelhorLinkCreateLinkResponse($j, $link);
+    $linkFinal = mlEscolherMelhorLinkCreateLinkResponse($j, $link, $fallback);
     if ($linkFinal !== '') {
         return trim($linkFinal);
     }
