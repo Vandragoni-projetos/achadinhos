@@ -4850,6 +4850,13 @@ if (!in_array($activeTab, $abasConfigValidas, true)) {
                 input.name = 'delete_banner';
                 input.value = index;
                 form.appendChild(input);
+                // Sem este campo, o servidor não entra no bloco da aba "geral"
+                // (if ($configTab === 'geral')) e o banner nunca é excluído.
+                const tabInput = document.createElement('input');
+                tabInput.type = 'hidden';
+                tabInput.name = 'config_tab';
+                tabInput.value = 'geral';
+                form.appendChild(tabInput);
                 document.body.appendChild(form);
                 form.submit();
             }
