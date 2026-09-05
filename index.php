@@ -12,7 +12,7 @@ try {
     // Carregar configurações
     $logo = getConfig('logo');
     $favicon = getConfig('favicon', '');
-    $siteNomeMarca = getConfig('site_nome_marca', 'OfertasJá');
+    $siteNomeMarca = getConfig('site_nome_marca', 'Achadinhos Sinergia');
     $siteMarcaModo = getConfig('site_marca_modo', 'ambos');
     if (!in_array($siteMarcaModo, ['logo', 'texto', 'ambos'], true)) {
         $siteMarcaModo = 'ambos';
